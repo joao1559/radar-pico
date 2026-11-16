@@ -8,7 +8,21 @@ O João é dev backend Go; prefere Go no ferramental e MicroPython no firmware.
 
 - **Feito e testado no PC**: conversor Go, lógica de alerta (`firmware/radar.py`), parser NMEA, simulador.
 - **Escrito mas NUNCA rodado em hardware real**: `firmware/main.py` (UART/PWM/OLED) e
-  `firmware/atualiza.py` (Wi-Fi + download). O primeiro teste na placa é a próxima etapa.
+  `firmware/atualiza.py` (Wi-Fi + download). O João ainda não tem a placa/componentes (2026-11-16).
+- `main.py` já roda inteiro no PC com hardware falso (`sim/fake/`: machine, ssd1306, network, requests +
+  relógio virtual) via `simula.py placa`: 6 cenários OK (achou e corrigiu o LED "piscando" a ~10 Hz).
+  Não mede RAM nem CPU do Pico. `atualiza.py` só foi exercitado no caminho "sem Wi-Fi".
+- **Pico W real (MicroPython 1.28, RPI_PICO_W), sem módulos, 2026-11-16**: firmware + base copiados
+  (700 KB livres antes); `main.py` boota até "SEM GPS". `mpremote run sim/bench_pico.py` mede o Alertador:
+  Brasília mediana 1 ms / p95 158 ms / máx 743 ms (troca de célula); SP centro ~40 ms; isolado 2 ms;
+  `gps.ler_rmc` 4 ms. A extensão MicroPico do VS Code segura a COM5: desconectar antes do mpremote.
+- **Wi-Fi/atualização testados no Pico real** (`python3 sim/teste_wifi.py <cenario>`: https, nova, igual,
+  corrompida, cortada, travada; o PC serve a base na porta 8765). HTTPS + `r.raw.read()` OK; o `requests`
+  1.28 já segue redirect sozinho. Flash com base tem só ~324 KB livres < 343 KB, então a base velha é
+  apagada antes do download: por isso `atualiza.py` tem timeout de 15 s, 3 tentativas, e baixa se não houver
+  `radares.bin` mesmo com a versão em dia. Não reverter.
+- Credenciais do Wi-Fi ficam em `firmware/segredos.py` (gitignored, importado pelo `config.py`); nunca
+  colocar senha no `config.py`.
 - GitHub Action (`.github/workflows/base.yml`) escrito, ainda não rodou. `config.py` tem placeholders
   (Wi-Fi e `URL_BASE` com `SEU_USUARIO`).
 
@@ -23,7 +37,8 @@ O João é dev backend Go; prefere Go no ferramental e MicroPython no firmware.
 - **Tamanho** (base de 2026-11-15): Brasil 19.874 radares → 343 KB (cabe na flash do Pico W, ~848 KB livres);
   SP 5.166 → 88 KB.
 - **RAM**: no centro de SP, 3×3 células = 1.813 radares (estourava a RAM). Solução: `Base.proximos()` só lê
-  células a < 1,5 km da posição e guarda bytes crus (pior caso medido: 799 radares ≈ 12 KB).
+  células a < 1,5 km da posição e guarda bytes crus. Pior caso na base 2026-11-15: centro de Brasília,
+  1.326 radares → 24 KB retidos no Pico real (de ~191 KB livres).
   `Radar` só é instanciado para o radar escolhido. Não reverter isso.
 - **Grupos**: radares por faixa ficam ~20 m um do outro; ao passar por um, todos a < 60 m (`RAIO_GRUPO`)
   são marcados como passados.
@@ -43,8 +58,12 @@ O João é dev backend Go; prefere Go no ferramental e MicroPython no firmware.
 cd conversor && go test ./... && go run . -in <csv ou URL> -out ../sim/radares.bin
 python3 sim/simula.py teste            # 300 passagens nos dois sentidos; exit 1 se falhar
 python3 sim/simula.py gpx trajeto.gpx  # reproduz trajeto gravado (assume 1 ponto/s)
+python3 sim/simula.py placa [x.gpx] [-v]  # roda firmware/main.py inteiro com hardware falso; exit 1 se falhar
 mpremote cp firmware/*.py : && mpremote cp sim/radares.bin :
 ```
+
+Nesta máquina (Windows) `python3` do PATH é o atalho da Store: usar `~/.local/bin/python3.14.exe` (uv),
+com `PYTHONIOENCODING=utf-8`. `sim/radares.bin` não é versionado: gerar com o conversor.
 
 Último resultado do `simula.py teste`: 300/300 alertas no sentido certo, 0 no sentido errado;
 1º aviso 278 m @40, 276 m @60, 300 m @80, 413 m @110 km/h.
@@ -56,7 +75,6 @@ OLED SSD1306 opcional SDA GP4 / SCL GP5 · alimentação USB do carro ou buck 12
 
 ## Pontos a verificar na placa / ideias pendentes
 
-- `requests` do MicroPython: confirmar `r.raw.read()` em HTTPS e o tratamento de redirect.
 - Bipe é bloqueante (até ~280 ms); UART com `rxbuf=2048` para não perder NMEA. Se der problema, migrar
   para `uasyncio` ou timer.
 - Possível: configurar o GPS para 5 Hz via UBX (M8N), modo silencioso, botão de mudo.

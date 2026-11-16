@@ -1,2 +1,6 @@
 *.bin
 *.bin.versao
+firmware/segredos.py
+sim/radares.bin
+__pycache__/
+*.pyc

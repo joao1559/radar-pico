@@ -78,6 +78,7 @@ nivel_ant = radar.NADA
 alvo_ant = None
 ultimo_fix = time.ticks_ms()
 ultimo_bipe_excesso = 0
+ultimo_pisca = 0
 sem_fix_avisado = False
 
 while True:
@@ -85,7 +86,9 @@ while True:
     agora = time.ticks_ms()
 
     if time.ticks_diff(agora, ultimo_fix) > 5000:
-        led.toggle()  # LED piscando = sem fix
+        if time.ticks_diff(agora, ultimo_pisca) >= 500:
+            led.toggle()  # LED piscando 1 Hz = sem fix
+            ultimo_pisca = agora
         if not sem_fix_avisado:
             mostrar("SEM GPS", "%d radares" % base.n_reg)
             sem_fix_avisado = True

@@ -4,9 +4,13 @@
 WIFI_SSID = "minha-rede"
 WIFI_SENHA = "minha-senha"
 WIFI_TIMEOUT_S = 10
+try:  # credenciais reais ficam em segredos.py (fora do git): WIFI_SSID / WIFI_SENHA
+    from segredos import *  # noqa: F401,F403
+except ImportError:
+    pass
 
 # Onde o GitHub Action publica o radares.bin (troque pelo seu repositório)
-URL_BASE = "https://raw.githubusercontent.com/SEU_USUARIO/radar-pico/dados/radares.bin"
+URL_BASE = "https://raw.githubusercontent.com/joao1559/radar-pico/dados/radares.bin"
 URL_VERSAO = URL_BASE + ".versao"
 
 # Pinos

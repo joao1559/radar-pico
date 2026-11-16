@@ -2,6 +2,7 @@
 
   python3 sim/simula.py teste [radares.bin]          -> passa de carro (virtualmente) por radares aleatórios
   python3 sim/simula.py gpx trajeto.gpx [radares.bin] -> reproduz um trajeto gravado e mostra os alertas
+  python3 sim/simula.py placa [trajeto.gpx] [-v]      -> roda o firmware/main.py inteiro com hardware falso
 """
 import math
 import os
@@ -113,6 +114,9 @@ def gpx(caminho_gpx, caminho_bin):
 
 if __name__ == "__main__":
     padrao = os.path.join(AQUI, "radares.bin")
+    if len(sys.argv) >= 2 and sys.argv[1] == "placa":
+        import placa
+        sys.exit(0 if placa.principal(sys.argv[2:], padrao) else 1)
     if len(sys.argv) >= 2 and sys.argv[1] == "gpx":
         gpx(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else padrao)
     else:
