@@ -1,0 +1,44 @@
+name: Gera radares.bin
+
+on:
+  schedule:
+    - cron: "17 9 * * 1"   # segunda 06:17 (Brasília): o pardal atualiza os arquivos aos domingos
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Testes do conversor
+        working-directory: conversor
+        run: go test ./...
+
+      - name: Converte (Brasil inteiro, ~350 KB)
+        working-directory: conversor
+        # Para só um estado: -in https://raw.githubusercontent.com/murkiriel/pardal/main/estados/SP/radares.csv
+        run: go run . -out ../radares.bin
+
+      - name: Testa a lógica com a base nova
+        run: |
+          mkdir -p sim && cp radares.bin sim/radares.bin
+          python3 sim/simula.py teste
+
+      - name: Publica na branch "dados"
+        run: |
+          mkdir publicar
+          cp radares.bin radares.bin.versao publicar/
+          cd publicar
+          git init -q -b dados
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add . && git commit -qm "Base de radares $(date -u +%F)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" dados
