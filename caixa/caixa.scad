@@ -36,16 +36,18 @@ usb_largura = 13;   // furo para o plug do cabo (a capa plástica do plug é mai
 usb_altura = 9;
 
 /* [OLED 0.96" I2C SSD1306] */
-oled_pcb = [27.3, 27.8];    // largura x altura da placa
-oled_furos = [23.0, 23.5];  // distância entre os centros dos furos (meça!)
+oled_pcb = [25, 27];        // largura x altura da placa (medido 2026-11-18)
+oled_furos = [21, 24];      // distância entre os centros dos furos, horizontal x vertical (medido)
 oled_furo_d = 2.0;          // diâmetro dos furos da placa
 oled_janela = [24, 13];     // abertura da tela (área ativa ~21,7 x 10,9)
-oled_janela_dz = 0;         // + sobe a janela, - desce (se a tela não ficar centrada)
+// área acesa começa 5 mm abaixo do topo (lado dos pinos) e tem ~10,9 mm de altura: centro 3,1 mm acima
+// do centro da placa. Monte o OLED com os pinos para CIMA. + sobe a janela, - desce.
+oled_janela_dz = 27 / 2 - (5 + 10.9 / 2);
 oled_x = 25;                // centro do OLED, medido da parede esquerda interna
 oled_recuo = 2.6;           // distância parede→placa: o vidro da tela deve encostar na parede
 
 /* [GPS NEO-6M] */
-gps_pcb = [35, 25];         // placa do módulo (a antena fica na tampa)
+gps_pcb = [35, 30];         // placa do módulo, largura x profundidade (medido 2026-11-18; a antena fica na tampa)
 ant = 25.0;                 // antena cerâmica quadrada
 ant_tol = 0.8;
 ant_parede = 1.6;

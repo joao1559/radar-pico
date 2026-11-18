@@ -85,7 +85,7 @@ OLED SSD1306 (faz parte do projeto) SDA GP4 / SCL GP5 — driver via `mpremote m
 
 `caixa/caixa.scad` (OpenSCAD, paramétrico): partes caixa / tampa / teste_oled / teste_buzzer. OLED na frente,
 USB do Pico na lateral direita, antena do GPS colada na tampa acima do GPS (cabinho curto), buzzer 12×9,5 mm
-num tubo na tampa. Fios soldados direto (2026-11-18): `pico_alt = 4`, `int_z = 30` (17/32 se voltar a usar dupont). Medidas de OLED/GPS são genéricas: ajustar com as peças reais. Imprimir em PETG/ASA.
+num tubo na tampa. Fios soldados direto (2026-11-18): `pico_alt = 4`, `int_z = 30` (17/32 se voltar a usar dupont). OLED medido (placa 25×27, furos 21×24, área acesa a 5 mm do topo; montar com pinos para cima); antena 25×25 confere; placa do GPS 35×30 medida. Imprimir em PETG/ASA.
 Fixação no carro ainda indefinida (fundo reto). OpenSCAD 2021.01 instalado (`"/c/Program Files/OpenSCAD/openscad.com" -o caixa/stl/<parte>.stl -D parte=\"<parte>\" caixa/caixa.scad`); STLs em `caixa/stl/`, todas as peças 1 corpo só e sem colisão com os componentes.
 
 ## Pontos a verificar na placa / ideias pendentes
