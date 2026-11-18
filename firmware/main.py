@@ -21,13 +21,17 @@ except Exception:
 
 
 def mostrar(*linhas):
+    global tela
     print(" | ".join(linhas))
     if tela is None:
         return
     tela.fill(0)
     for i, l in enumerate(linhas[:6]):
         tela.text(l[:16], 0, i * 11)
-    tela.show()
+    try:
+        tela.show()
+    except OSError:  # fio da tela soltou (vibração): segue só com o som, sem derrubar o alerta
+        tela = None
 
 
 # ---------- Som ----------
@@ -124,7 +128,7 @@ while True:
         extra = ("media %d" % int(est.media_trecho)) if est.media_trecho else ("%d m" % int(est.dist))
         mostrar(NOMES.get(r.tipo, "RADAR"), lim, extra, "voce: %d km/h" % int(vel),
                 "!! REDUZA !!" if est.nivel == radar.EXCESSO else "")
-    elif nivel_ant != radar.NADA or alvo_ant is not None:
+    else:  # sem radar à frente: mostra a velocidade (e tira o "SEM GPS" da tela)
         mostrar("Livre", "%d km/h" % int(vel))
 
     nivel_ant, alvo_ant = est.nivel, alvo

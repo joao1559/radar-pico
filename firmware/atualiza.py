@@ -105,6 +105,7 @@ def tentar(aviso=print):
     wlan = _conectar()
     if not wlan.isconnected():
         wlan.active(False)
+        aviso("sem Wi-Fi")
         return False
     try:
         _apagar(TMP)  # sobra de um download interrompido (ex.: desligou o carro no meio)

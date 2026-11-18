@@ -21,10 +21,18 @@ O João é dev backend Go; prefere Go no ferramental e MicroPython no firmware.
   1.28 já segue redirect sozinho. Flash com base tem só ~324 KB livres < 343 KB, então a base velha é
   apagada antes do download: por isso `atualiza.py` tem timeout de 15 s, 3 tentativas, e baixa se não houver
   `radares.bin` mesmo com a versão em dia. Não reverter.
+- Fragmentação (`mpremote run sim/frag_pico.py`, 20 min, 898 trocas de cache em Brasília/SP/Rio/BH):
+  0 MemoryError, mas o maior bloco livre caiu a 30 KB (precisa de ~21 KB em Brasília). Margem pequena:
+  candidato a pré-alocar um buffer fixo e usar `readinto`.
 - Credenciais do Wi-Fi ficam em `firmware/segredos.py` (gitignored, importado pelo `config.py`); nunca
   colocar senha no `config.py`.
-- GitHub Action (`.github/workflows/base.yml`) escrito, ainda não rodou. `config.py` tem placeholders
-  (Wi-Fi e `URL_BASE` com `SEU_USUARIO`).
+- **Módulos reais (2026-11-17)**: OLED responde em 0x3C e mostra texto. O "NEO-6M" é na verdade um chip
+  compatível multi-GNSS (AT6558/ATGM336H: `$GNRMC`, `$BDGSA`, `$GNZDA`, `$GPTXT ANTENNA OK`) → UBX/5 Hz
+  não se aplica (usa comandos `$PCAS`). Partida a frio pela janela: fix em 285 s, depois estável 30 min com
+  8–9 satélites, HDOP 1,2. `sim/gps_pico.py` monitora fix (com `SOZINHO = True` roda como main.py sem PC e
+  grava `gps_log.txt`). Buzzer ainda não chegou. `main.py` agora mostra "Livre | X km/h" a cada fix.
+- Repo `joao1559/radar-pico`; a Action rodou (manual, 2026-11-16) e publicou a branch `dados`. O Pico baixou
+  a base real do GitHub por HTTPS (343 KB em ~14 s) e reconhece "base em dia".
 
 ## Decisões de arquitetura (e por quê)
 
@@ -71,11 +79,18 @@ com `PYTHONIOENCODING=utf-8`. `sim/radares.bin` não é versionado: gerar com o 
 ## Hardware
 
 GPS (NEO-6M/M8N, 9600 baud) TX → GP1, RX → GP0 · buzzer **passivo** GP15 (PWM) ·
-OLED SSD1306 opcional SDA GP4 / SCL GP5 · alimentação USB do carro ou buck 12→5 V no VSYS.
+OLED SSD1306 (faz parte do projeto) SDA GP4 / SCL GP5 — driver via `mpremote mip install ssd1306` (já na placa, ~3 KB RAM); se a tela falhar no `show()`, o `main.py` segue só com som · alimentação USB do carro ou buck 12→5 V no VSYS.
+
+## Caixa 3D
+
+`caixa/caixa.scad` (OpenSCAD, paramétrico): partes caixa / tampa / teste_oled / teste_buzzer. OLED na frente,
+USB do Pico na lateral direita, antena do GPS colada na tampa acima do GPS (cabinho curto), buzzer 12×9,5 mm
+num tubo na tampa. Fios soldados direto (2026-11-18): `pico_alt = 4`, `int_z = 30` (17/32 se voltar a usar dupont). Medidas de OLED/GPS são genéricas: ajustar com as peças reais. Imprimir em PETG/ASA.
+Fixação no carro ainda indefinida (fundo reto). OpenSCAD 2021.01 instalado (`"/c/Program Files/OpenSCAD/openscad.com" -o caixa/stl/<parte>.stl -D parte=\"<parte>\" caixa/caixa.scad`); STLs em `caixa/stl/`, todas as peças 1 corpo só e sem colisão com os componentes.
 
 ## Pontos a verificar na placa / ideias pendentes
 
 - Bipe é bloqueante (até ~280 ms); UART com `rxbuf=2048` para não perder NMEA. Se der problema, migrar
   para `uasyncio` ou timer.
-- Possível: configurar o GPS para 5 Hz via UBX (M8N), modo silencioso, botão de mudo.
+- Possível: GPS a 5 Hz (no AT6558 via `$PCAS02`, não UBX), modo silencioso, botão de mudo.
 - Licença dos dados: ODbL (creditar OSM e fontes). Detector de radar por RF é proibido; este projeto só usa base.

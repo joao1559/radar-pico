@@ -1,5 +1,6 @@
 """ssd1306 falso: confere se o texto cabe na tela 128x64 e guarda o último quadro."""
 presente = True   # False simula placa sem OLED (o construtor falha, como sem o módulo ligado)
+solta_apos = None  # N: o show() número N+1 em diante falha (fio da tela soltou com o carro andando)
 quadros = []      # cada show() vira uma tupla de linhas
 erros = []
 
@@ -20,6 +21,8 @@ class SSD1306_I2C:
         self._linhas[y] = s
 
     def show(self):
+        if solta_apos is not None and len(quadros) >= solta_apos:
+            raise OSError(5, "EIO")  # o que o I2C do rp2 levanta quando o dispositivo some
         quadros.append(tuple(self._linhas[y] for y in sorted(self._linhas)))
 
     def poweroff(self):

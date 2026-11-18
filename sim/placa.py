@@ -166,10 +166,11 @@ def _sons(pwm):
     return [(t, SONS.get((f, n), "%dHz x%d" % (f, n))) for t, f, n, _ in sons]
 
 
-def rodar(pontos, dir_base, oled=True, wifi=False):
+def rodar(pontos, dir_base, oled=True, wifi=False, oled_solta_apos=None):
     machine.reg.reset()
     del ssd1306.quadros[:], ssd1306.erros[:], network.log[:]
     ssd1306.presente = oled
+    ssd1306.solta_apos = oled_solta_apos
     network.conecta = wifi
 
     chamadas = []
@@ -322,6 +323,11 @@ def cenarios(caminho_bin, verboso=False):
     res = rodar(pts, dir_base, oled=False)
     ok &= checar("sem OLED", res, ["BOOT", "AVISO", "PERTO"], verboso=verboso,
                  extra=lambda r: [None if r["quadros"] == 0 else "desenhou na tela inexistente"])
+
+    # 4b) Tela solta no meio do trajeto: o alerta sonoro tem que continuar
+    pts = com_boot(reta(alvo.lat, alvo.lng, alvo.direcao, lambda d: lim - 10, rnd=rnd))
+    res = rodar(pts, dir_base, oled_solta_apos=4)
+    ok &= checar("OLED solta no meio do trajeto", res, ["BOOT", "AVISO", "PERTO"], verboso=verboso)
 
     # 5) Radar de trecho acima da média
     trechos = [r for r in todos if r.tipo == rd.TRECHO and r.fim and r.limite and
