@@ -10,7 +10,7 @@
 // Coordenadas internas: x = largura (esquerda→direita, olhando a frente), y = profundidade
 // (frente→fundo), z = altura a partir do piso interno. A frente (y=0) tem o OLED; o USB sai à direita.
 
-parte = "tudo"; // [tudo, caixa, tampa, teste_oled, teste_buzzer]
+parte = "tudo"; // [tudo, caixa, tampa, teste_oled, teste_buzzer, teste_rosca, pinos_pico]
 
 /* [Caixa] */
 int_x = 100;        // medidas internas (mm)
@@ -18,13 +18,24 @@ int_y = 58;
 int_z = 30;         // quem limita é o OLED de pé na frente (27,8 mm)
 parede = 2.4;
 fundo = 2.0;
-tampa_esp = 2.0;
+tampa_esp = 3.0;    // 3 mm: cabe a cabeça escareada do M4 (~2,5 mm)
 raio_canto = 3;
 folga = 0.3;        // folga de encaixe da tampa
-poste = 7;          // postes dos cantos, onde entram os parafusos da tampa
-furo_piloto = 2.5;  // parafuso M3 autoatarraxante (ou M3 x 10 de madeira)
-furo_tampa = 3.4;
-cabeca_paraf = 6.2; // escareado M3
+poste = 9;          // postes dos cantos, onde entram os parafusos da tampa (9 mm para rosca M4)
+// Parafusos da tampa: 4 x M4 x 10 escareados. Como prendem nos postes:
+//   rosca  = rosca M4 modelada (passo 0,7): parafuso de máquina comum. Imprima com camada <= 0,16 mm.
+//   insert = furo para inserto de latão M4 (veja o Ø do fabricante), colocado com ferro de solda.
+//   piloto = furo liso para parafuso autoatarraxante M4.
+fixacao_tampa = "rosca"; // [rosca, insert, piloto]
+paraf_d = 4;        // M4
+paraf_passo = 0.7;  // passo normal do M4
+rosca_prof = 9;     // M4 x 10 atravessa 3 mm de tampa e entra ~7 mm; 2 mm de sobra no fundo
+rosca_folga = 0.3;  // aumenta o furo; se o parafuso ficar duro, suba para 0.4; se ficar frouxo, desça
+insert_d = 5.6;     // furo do inserto M4 (veja o diâmetro indicado pelo fabricante do seu inserto)
+insert_prof = 8;
+furo_piloto = 3.3;
+furo_tampa = 4.5;   // furo de passagem na tampa
+cabeca_paraf = 8.6; // escareado M4 (cabeça de 8 mm + folga)
 
 /* [Pico W] */
 pico_l = 51;
@@ -98,6 +109,50 @@ module cercado_gps() {
     }
 }
 
+// Rosca interna métrica (perfil ISO 60°, direita): núcleo no diâmetro menor + filete helicoidal.
+// É o "negativo" do parafuso (subtraia de uma peça); ocupa z de 0 a h.
+module rosca_interna(d = 3, passo = 0.5, h = 10, folga = 0.3, fn = 32) {
+    r_maj = d / 2 + folga / 2;
+    prof = 5 / 8 * 0.866 * passo;            // profundidade do filete ISO
+    r_min = r_maj - prof;
+    base = r_min - 0.1;                       // o filete entra 0,1 mm no núcleo (une bem)
+    meia = tan(30) * (r_maj - base);          // meia largura do filete na base (flancos de 60°)
+    n = ceil(h / passo * fn);
+    pts = [for (i = [0:n]) let (a = i * 360 / fn, z = i * passo / fn)
+              each [[base * cos(a), base * sin(a), z - meia],
+                    [r_maj * cos(a), r_maj * sin(a), z],
+                    [base * cos(a), base * sin(a), z + meia]]];
+    faces = concat(
+        [[2, 1, 0]],
+        [for (i = [0:n - 1], e = [[0, 1], [1, 2], [2, 0]])
+            [3 * i + e[0], 3 * i + e[1], 3 * (i + 1) + e[1], 3 * (i + 1) + e[0]]],
+        [[3 * n, 3 * n + 1, 3 * n + 2]]);
+    cylinder(r = r_min, h = h, $fn = fn);
+    polyhedron(pts, faces, convexity = 10);
+}
+
+module furo_poste() {  // z = 0 no topo do poste
+    if (fixacao_tampa == "rosca") {
+        translate([0, 0, -rosca_prof]) rosca_interna(paraf_d, paraf_passo, rosca_prof + 0.3, rosca_folga);
+        translate([0, 0, -0.7]) cylinder(d1 = paraf_d - 0.6, d2 = paraf_d + 0.8, h = 0.71);  // chanfro de entrada
+    } else if (fixacao_tampa == "insert") {
+        translate([0, 0, -insert_prof]) cylinder(d = insert_d, h = insert_prof + 0.1);
+        translate([0, 0, -insert_prof - 3]) cylinder(d = paraf_d - 0.5, h = 3.1);    // espaço para o plástico derretido
+    } else {
+        translate([0, 0, -12]) cylinder(d = furo_piloto, h = 12.1);
+    }
+}
+
+// Pino de pressão no lugar do parafuso M2 do Pico (rosca M2 não sai em impressora FDM).
+// Atravessa o furo do Pico (Ø2,1) e entra apertado no furo-piloto do espaçador (Ø1,8).
+pino_d = 1.95;     // se não entrar no espaçador, imprima com 1.85; se ficar solto, 2.05
+module pino_pico() {
+    haste = pico_esp + 3;  // placa + 3 mm dentro do espaçador
+    cylinder(d = 3.6, h = 0.8);                                   // cabeça (fica sobre a placa)
+    translate([0, 0, 0.8]) cylinder(d = pino_d, h = haste - 0.3, $fn = 24);
+    translate([0, 0, 0.8 + haste - 0.3]) cylinder(d1 = pino_d, d2 = pino_d - 0.5, h = 0.3, $fn = 24);  // ponta
+}
+
 module caixa() {
     difference() {
         union() {
@@ -119,8 +174,8 @@ module caixa() {
             }
         }
         interno() {
-            for (c = centros_postes()) translate([c[0], c[1], int_z - 12]) cylinder(d = furo_piloto, h = 13);
-            for (f = pico_furos) let (prof = min(6, pico_alt + fundo - 0.8))  // nunca fura o fundo da caixa
+            for (c = centros_postes()) translate([c[0], c[1], int_z]) furo_poste();
+            for (f = pico_furos) let (prof = min(6, pico_alt + fundo - 0.8))  // M2 x 5 (o furo do Pico é Ø2,1); nunca fura o fundo
                 translate([pico_x0 + f[0], pico_y0 + f[1], pico_alt - prof]) cylinder(d = 1.8, h = prof + 1);
             translate([oled_x, 0, oled_z + oled_janela_dz]) janela_oled();
             // USB do Pico (o conector fica em cima da placa)
@@ -159,7 +214,8 @@ module tampa_montada() {  // na posição final, em coordenadas da caixa
         interno() {
             for (c = centros_postes()) translate([c[0], c[1], int_z - 1]) {
                 cylinder(d = furo_tampa, h = tampa_esp + 2);
-                translate([0, 0, 1 + tampa_esp - 1.7]) cylinder(d1 = furo_tampa, d2 = cabeca_paraf, h = 1.71);
+                let (hc = (cabeca_paraf - furo_tampa) / 2)  // escareado de 90°
+                    translate([0, 0, 1 + tampa_esp - hc]) cylinder(d1 = furo_tampa, d2 = cabeca_paraf, h = hc + 0.01);
             }
             translate([buz_x, buz_y, int_z - 1])
                 for (i = [-2:2], j = [-2:2]) if (i * i + j * j <= 5)
@@ -189,6 +245,10 @@ else if (parte == "teste_oled")
     intersection() { caixa(); translate([parede + oled_x - 20, 0, 0]) cube([40, parede + oled_recuo + 4, ext[2]]); }
 else if (parte == "teste_buzzer")
     intersection() { tampa_impressao(); translate([parede + buz_x - 12, ext[1] - parede - buz_y - 12, 0]) cube([24, 24, 20]); }
+else if (parte == "pinos_pico")  // 4 pinos + 2 de reserva, cabeça para baixo
+    for (i = [0:5]) translate([(i % 3) * 8, floor(i / 3) * 8, 0]) pino_pico();
+else if (parte == "teste_rosca")  // canto da caixa com um poste: confere o parafuso da tampa
+    intersection() { caixa(); translate([0, 0, ext[2] - 13]) cube([parede + poste + 3, parede + poste + 3, 13]); }
 else if (parte == "tudo") {
     caixa();
     %fantasmas();
